@@ -295,6 +295,75 @@ function playChime(type) {
     osc.stop(now + t + d + 0.02)
   })
 }
+// Fetch stats from localStorage or start empty
+let stats = JSON.parse(localStorage.getItem('tiking-stats') || '[]');
+
+const list = document.getElementById('stats-list');
+const emptyMsg = document.querySelector('.stats-empty');
+
+function renderStats() {
+  list.innerHTML = stats.map(s => {
+    const minutes = Math.round(s.duration / 60);
+    const date = new Date(s.date).toLocaleString([], { 
+      weekday: 'short', hour: '2-digit', minute: '2-digit' 
+    });
+    return `
+      <li class="glass">
+        <div>${s.type === "focus" ? "🔥 Focus" : "☕ Break"} — ${minutes} min</div>
+        <span>${date}</span>
+      </li>
+    `;
+  }).join("");
+
+  emptyMsg.style.display = stats.length ? 'none' : 'grid';
+}
+
+// Call initially
+renderStats();
+
+// Push new session after timer finishes
+function addSession(type, duration) {
+  stats.push({ type, duration, date: Date.now() });
+  localStorage.setItem('tiking-stats', JSON.stringify(stats));
+  renderStats();
+}
+
+// Hook into your existing timer logic
+// Replace the "Session finished" part in app.js with:
+if (elapsed >= seconds && playing) {
+  playing = false;
+  applyButtonState();
+
+  // Play end chime
+  if (!isBreak) {
+    const url = (document.getElementById('focus-sound-url') || {}).value;
+    if (url && /^https?:\/\//i.test(url)) playExternal(url);
+    else playChime('focusEnd');
+
+    // Add focus session to stats
+    addSession('focus', seconds);
+  } else {
+    playChime('breakEnd');
+
+    // Add break session to stats
+    addSession('break', seconds);
+  }
+
+  // Auto-switch to break if just finished focus
+  if (!isBreak) {
+    isBreak = true;
+    seconds = (Number(localStorage.getItem('tiking-break-minutes')) || breakMinutes) * 60;
+    elapsed = 0;
+    playChime('breakStart');
+    playing = true;
+    applyButtonState();
+    rafId = requestAnimationFrame(tick);
+  } else {
+    // After break, go back to focus
+    isBreak = false;
+  }
+  render();
+}
 
 let externalAudio
 function playExternal(url) {
