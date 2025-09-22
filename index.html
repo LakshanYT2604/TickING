@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TikING — Focus Timer Mockup</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="bg-gradient"></div>
+    <div class="glass-layers">
+      <div class="glass-layer layer-1"></div>
+      <div class="glass-layer layer-2"></div>
+      <div class="glass-layer layer-3"></div>
+    </div>
+
+    <main class="app">
+      <header class="topbar">
+        <h1 class="brand">TikING</h1>
+      </header>
+
+      <section class="views">
+        <div class="view" data-view="home" aria-hidden="false">
+          <div class="hero-card glass">
+            <h2 class="hero-title">Stay focused, stay present</h2>
+            <p class="hero-sub">Gen Z-ready learning companion with gentle visuals and rhythm.</p>
+          </div>
+        </div>
+
+        <div class="view" data-view="timer" aria-hidden="true">
+          <div class="timer-wrap">
+            <div class="timer-card glass" role="group" aria-label="Timer">
+              <div class="session-label">Focus Session</div>
+              <div class="ring">
+                <svg class="ring-svg" viewBox="0 0 280 280" aria-hidden="true">
+                  <defs>
+                    <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stop-color="#6C7BFF" />
+                      <stop offset="100%" stop-color="#6BE3C1" />
+                    </linearGradient>
+                  </defs>
+                  <circle cx="140" cy="140" r="120" class="ring-track" />
+                  <circle cx="140" cy="140" r="120" class="ring-progress" stroke="url(#ringGrad)" />
+                </svg>
+                <div class="countdown" aria-live="polite">25:00</div>
+              </div>
+              <div class="controls">
+                <button class="pill primary" data-action="start">Start</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="view" data-view="stats" aria-hidden="true">
+          <div class="stats glass">
+            <div class="stats-header">
+              <h3>Weekly Focus</h3>
+              <span class="muted">No data yet</span>
+            </div>
+            <div class="stats-empty">
+              <div class="empty-icon" aria-hidden="true">📊</div>
+              <p class="empty-title">No stats yet</p>
+              <p class="empty-sub">Yo what the fuck are you doing huh? start a Damn Session....</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="view" data-view="settings" aria-hidden="true">
+          <div class="settings glass">
+            <div class="setting-row wheel-row">
+              <label class="label">Focus Duration</label>
+              <div class="wheel-container" data-target="focus">
+                <button type="button" class="picker-header" aria-expanded="false">
+                  <span class="value" id="focus-value">25 min</span>
+                  <span class="chev" aria-hidden="true">▾</span>
+                </button>
+                <div class="wheel" id="focus-wheel" aria-label="Focus Duration Minutes" role="listbox" tabindex="0"></div>
+              </div>
+            </div>
+            <div class="setting-row wheel-row">
+              <label class="label">Short Break</label>
+              <div class="wheel-container" data-target="break">
+                <button type="button" class="picker-header" aria-expanded="false">
+                  <span class="value" id="break-value">5 min</span>
+                  <span class="chev" aria-hidden="true">▾</span>
+                </button>
+                <div class="wheel" id="break-wheel" aria-label="Short Break Minutes" role="listbox" tabindex="0"></div>
+              </div>
+            </div>
+            <div class="setting-row">
+              <label class="label">Sound</label>
+              <div class="control toggle">
+                <input id="sound" type="checkbox" checked />
+                <label for="sound"></label>
+              </div>
+            </div>
+            <div class="setting-row">
+              <label class="label">Focus end sound</label>
+              <div class="control sound-url">
+                <input id="focus-sound-url" type="text" placeholder="Paste MP3 URL (e.g. from MyInstants)" />
+                <button id="focus-sound-test" class="pill ghost" type="button">Test</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <nav class="bottom-nav glass">
+        <button class="tab active" data-tab="home">
+          <span class="icon" aria-hidden="true">🏠</span>
+          <span class="label">Home</span>
+        </button>
+        <button class="tab" data-tab="timer">
+          <span class="icon" aria-hidden="true">⏱️</span>
+          <span class="label">Timer</span>
+        </button>
+        <button class="tab" data-tab="stats">
+          <span class="icon" aria-hidden="true">📈</span>
+          <span class="label">Stats</span>
+        </button>
+        <button class="tab" data-tab="settings">
+          <span class="icon" aria-hidden="true">⚙️</span>
+          <span class="label">Settings</span>
+        </button>
+      </nav>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+  </html>
+
+
