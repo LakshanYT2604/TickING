@@ -7,6 +7,36 @@ const startBtn = document.querySelector('[data-action="start"]')
 let pauseBtn = null
 let resetBtn = null
 
+// ======== Stats =========
+const list = document.getElementById('stats-list')
+let stats = JSON.parse(localStorage.getItem('tiking-stats')) || []
+
+function saveStats() {
+  localStorage.setItem('tiking-stats', JSON.stringify(stats))
+}
+
+function renderStats() {
+  if (!list) return
+  if (stats.length === 0) {
+    list.innerHTML = `<p class="muted">No data yet. Start a session!</p>`
+    return
+  }
+  list.innerHTML = stats.map(s => {
+    const minutes = Math.round(s.duration / 60)
+    const date = new Date(s.date).toLocaleString([], { 
+      weekday: 'short', hour: '2-digit', minute: '2-digit' 
+    })
+    return `
+      <li class="glass stats-item">
+        <div>${s.type === "focus" ? "🔥 Focus" : "☕ Break"} — ${minutes} min</div>
+        <span>${date}</span>
+      </li>
+    `
+  }).join("")
+}
+renderStats()
+
+// ======== Tab navigation =========
 tabs.forEach((tab) => {
   tab.addEventListener('click', () => {
     const target = tab.getAttribute('data-tab')
@@ -15,7 +45,7 @@ tabs.forEach((tab) => {
   })
 })
 
-// Minimal mock progress animation for the ring and countdown label
+// ======== Timer =========
 let seconds = 25 * 60
 let elapsed = 0
 const r = 120
@@ -33,6 +63,7 @@ function render() {
   ringProgress.style.strokeDasharray = `${circumference} ${circumference}`
   ringProgress.style.strokeDashoffset = `${dashoffset}`
   sessionLabel.textContent = isBreak ? 'Short Break' : 'Focus Session'
+  sessionLabel.classList.toggle('break', isBreak)
 }
 
 render()
@@ -49,36 +80,41 @@ function tick(ts) {
   if (elapsed < seconds && playing) {
     rafId = requestAnimationFrame(tick)
   } else if (elapsed >= seconds && playing) {
-    // Session finished
     playing = false
     applyButtonState()
-    // end chime depending on session type
+
+    // Add to stats
+    stats.unshift({ type: isBreak ? 'break' : 'focus', duration: seconds, date: Date.now() })
+    if (stats.length > 50) stats.pop() // keep last 50 sessions
+    saveStats()
+    renderStats()
+
+    // end chime
     if (!isBreak) {
-      // Try user-provided focus end sound first
       const url = (document.getElementById('focus-sound-url') || {}).value
-      if (url && /^https?:\/\//i.test(url)) {
-        playExternal(url)
-      } else {
-        playChime('focusEnd')
-      }
+      if (url && /^https?:\/\//i.test(url)) playExternal(url)
+      else playChime('focusEnd')
     } else {
       playChime('breakEnd')
     }
-    // Auto-switch to break if we just finished focus
+
+    // Auto-switch sessions
     if (!isBreak) {
       isBreak = true
       seconds = (Number(localStorage.getItem('tiking-break-minutes')) || breakMinutes) * 60
       elapsed = 0
-      // play break start chime
       playChime('breakStart')
       playing = true
       applyButtonState()
       rafId = requestAnimationFrame(tick)
     } else {
-      // After break, go back to focus with previous focus duration
       isBreak = false
+      // reset focus duration
+      seconds = Number(localStorage.getItem('tiking-focus-minutes')) || Math.round(seconds / 60) * 60
+      elapsed = 0
+      render()
+      applyButtonState()
     }
-    render()
   }
 }
 
@@ -111,10 +147,7 @@ function applyButtonState() {
 
 function toggleStartPause() {
   if (!playing) {
-    // play start chime only when starting focus session
-    if (!isBreak && elapsed === 0) {
-      playChime('focusStart')
-    }
+    if (!isBreak && elapsed === 0) playChime('focusStart')
     playing = true
     last = 0
     rafId = requestAnimationFrame(tick)
@@ -134,10 +167,9 @@ function reset() {
 }
 
 startBtn.addEventListener('click', toggleStartPause)
-
 applyButtonState()
 
-// Wheel picker logic
+// ======== Wheel pickers =========
 function buildWheel(el, min, max, step, value) {
   el.innerHTML = ''
   const indicator = document.createElement('div')
@@ -165,13 +197,13 @@ function buildWheel(el, min, max, step, value) {
     const indicator = el.querySelector('.wheel-indicator')
     if (el.id === 'focus-wheel') {
       seconds = minutes * 60
+      localStorage.setItem('tiking-focus-minutes', minutes)
       reset()
       document.getElementById('focus-value').textContent = `${minutes} min`
     } else if (el.id === 'break-wheel') {
       localStorage.setItem('tiking-break-minutes', String(minutes))
       document.getElementById('break-value').textContent = `${minutes} min`
     }
-    // Flash the indicator for feedback
     if (indicator) {
       indicator.classList.remove('flash')
       void indicator.offsetWidth
@@ -188,12 +220,10 @@ function buildWheel(el, min, max, step, value) {
     }, 120)
   })
 
-  // Click to select
   items.forEach((node, i) => {
     node.style.cursor = 'pointer'
     node.addEventListener('click', () => {
       applySelection(i)
-      // auto-collapse after selection
       const wrap = el.closest('.wheel-container')
       if (wrap) {
         const header = wrap.querySelector('.picker-header')
@@ -208,10 +238,9 @@ const focusWheel = document.getElementById('focus-wheel')
 const breakWheel = document.getElementById('break-wheel')
 if (focusWheel && breakWheel) {
   const savedBreak = Number(localStorage.getItem('tiking-break-minutes')) || 5
-  buildWheel(focusWheel, 5, 60, 5, Math.min(60, Math.max(5, Math.round(seconds / 60 / 5) * 5)))
+  buildWheel(focusWheel, 5, 60, 5, Number(localStorage.getItem('tiking-focus-minutes')) || 25)
   buildWheel(breakWheel, 5, 30, 5, [5,10,15,20,25,30].includes(savedBreak) ? savedBreak : 5)
 
-  // Collapsible behavior
   document.querySelectorAll('.wheel-container').forEach((wrap) => {
     const header = wrap.querySelector('.picker-header')
     const wheel = wrap.querySelector('.wheel')
@@ -223,7 +252,7 @@ if (focusWheel && breakWheel) {
   })
 }
 
-// iPhone-like chimes using WebAudio (no external assets)
+// ======== Audio =========
 let audioCtx
 function ensureAudio() {
   try {
@@ -237,10 +266,9 @@ function playChime(type) {
   if (!ctx) return
   const now = ctx.currentTime
   const master = ctx.createGain()
-  master.gain.value = 0.0001
+  master.gain.value = 0.05
   master.connect(ctx.destination)
 
-  // Define simple chime envelopes and tones
   const sequences = {
     focusStart: [ { f: 880, t: 0, d: 0.08 }, { f: 1320, t: 0.08, d: 0.12 } ],
     focusEnd:   [ { f: 1320, t: 0, d: 0.08 }, { f: 880,  t: 0.08, d: 0.12 } ],
@@ -248,8 +276,8 @@ function playChime(type) {
     breakEnd:   [ { f: 660, t: 0, d: 0.12 } ]
   }
   const seq = sequences[type] || sequences.focusStart
-  // gentle master fade in/out
-  master.gain.setValueAtTime(0.0001, now)
+
+  master.gain.setValueAtTime(0.05, now)
   master.gain.exponentialRampToValueAtTime(0.3, now + 0.02)
   master.gain.exponentialRampToValueAtTime(0.0001, now + 0.5)
 
@@ -268,7 +296,6 @@ function playChime(type) {
   })
 }
 
-// External MP3 playback helper
 let externalAudio
 function playExternal(url) {
   try {
@@ -279,7 +306,6 @@ function playExternal(url) {
   } catch {}
 }
 
-// Wire test button
 const testBtn = document.getElementById('focus-sound-test')
 if (testBtn) {
   testBtn.addEventListener('click', () => {
@@ -298,5 +324,3 @@ document.addEventListener('keydown', (e) => {
     }
   }
 })
-
-
